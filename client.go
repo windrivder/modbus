@@ -407,11 +407,11 @@ func (mc *ModbusClient) ReadDiscreteInput(addr uint16) (value bool, err error) {
 }
 
 // Reads multiple 16-bit registers (function code 03 or 04).
-func (mc *ModbusClient) ReadRegisters(addr uint16, quantity uint16, regType RegType) (values []uint16, err error) {
+func (mc *ModbusClient) ReadRegisters(addr uint16, quantity uint16, regType RegType, opts ...OptionFunc) (values []uint16, err error) {
 	var mbPayload []byte
 
 	// read quantity uint16 registers, as bytes
-	mbPayload, err = mc.readRegisters(addr, quantity, regType)
+	mbPayload, err = mc.readRegisters(addr, quantity, regType, opts...)
 	if err != nil {
 		return
 	}
@@ -423,11 +423,11 @@ func (mc *ModbusClient) ReadRegisters(addr uint16, quantity uint16, regType RegT
 }
 
 // Reads a single 16-bit register (function code 03 or 04).
-func (mc *ModbusClient) ReadRegister(addr uint16, regType RegType) (value uint16, err error) {
+func (mc *ModbusClient) ReadRegister(addr uint16, regType RegType, opts ...OptionFunc) (value uint16, err error) {
 	var values []uint16
 
 	// read 1 uint16 register, as bytes
-	values, err = mc.ReadRegisters(addr, 1, regType)
+	values, err = mc.ReadRegisters(addr, 1, regType, opts...)
 	if err == nil {
 		value = values[0]
 	}
@@ -706,16 +706,22 @@ func (mc *ModbusClient) WriteCoils(addr uint16, values []bool) (err error) {
 }
 
 // Writes a single 16-bit register (function code 06).
-func (mc *ModbusClient) WriteRegister(addr uint16, value uint16) (err error) {
+func (mc *ModbusClient) WriteRegister(addr uint16, value uint16, opts ...OptionFunc) (err error) {
 	var req *pdu
 	var res *pdu
 
 	mc.lock.Lock()
 	defer mc.lock.Unlock()
 
+	options := newOptions(opts...)
+	unitId := mc.unitId
+	if options.unitId != nil {
+		unitId = *options.unitId
+	}
+
 	// create and fill in the request object
 	req = &pdu{
-		unitId:       mc.unitId,
+		unitId:       unitId,
 		functionCode: fcWriteSingleRegister,
 	}
 
@@ -760,7 +766,7 @@ func (mc *ModbusClient) WriteRegister(addr uint16, value uint16) (err error) {
 }
 
 // Writes multiple 16-bit registers (function code 16).
-func (mc *ModbusClient) WriteRegisters(addr uint16, values []uint16) (err error) {
+func (mc *ModbusClient) WriteRegisters(addr uint16, values []uint16, opts ...OptionFunc) (err error) {
 	var payload []byte
 
 	// turn registers to bytes
@@ -768,7 +774,7 @@ func (mc *ModbusClient) WriteRegisters(addr uint16, values []uint16) (err error)
 		payload = append(payload, uint16ToBytes(mc.endianness, value)...)
 	}
 
-	err = mc.writeRegisters(addr, payload)
+	err = mc.writeRegisters(addr, payload, opts...)
 
 	return
 }
@@ -1017,16 +1023,22 @@ func (mc *ModbusClient) readBools(addr uint16, quantity uint16, di bool) (values
 }
 
 // Reads and returns quantity registers of type regType, as bytes.
-func (mc *ModbusClient) readRegisters(addr uint16, quantity uint16, regType RegType) (bytes []byte, err error) {
+func (mc *ModbusClient) readRegisters(addr uint16, quantity uint16, regType RegType, opts ...OptionFunc) (bytes []byte, err error) {
 	var req *pdu
 	var res *pdu
 
 	mc.lock.Lock()
 	defer mc.lock.Unlock()
 
+	options := newOptions(opts...)
+	unitId := mc.unitId
+	if options.unitId != nil {
+		unitId = *options.unitId
+	}
+
 	// create and fill in the request object
 	req = &pdu{
-		unitId: mc.unitId,
+		unitId: unitId,
 	}
 
 	switch regType {
@@ -1107,7 +1119,7 @@ func (mc *ModbusClient) readRegisters(addr uint16, quantity uint16, regType RegT
 
 // Writes multiple registers starting from base address addr.
 // Register values are passed as bytes, each value being exactly 2 bytes.
-func (mc *ModbusClient) writeRegisters(addr uint16, values []byte) (err error) {
+func (mc *ModbusClient) writeRegisters(addr uint16, values []byte, opts ...OptionFunc) (err error) {
 	var req *pdu
 	var res *pdu
 	var payloadLength uint16
@@ -1137,9 +1149,15 @@ func (mc *ModbusClient) writeRegisters(addr uint16, values []byte) (err error) {
 		return
 	}
 
+	options := newOptions(opts...)
+	unitId := mc.unitId
+	if options.unitId != nil {
+		unitId = *options.unitId
+	}
+
 	// create and fill in the request object
 	req = &pdu{
-		unitId:       mc.unitId,
+		unitId:       unitId,
 		functionCode: fcWriteMultipleRegisters,
 	}
 
