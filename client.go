@@ -549,8 +549,8 @@ func (mc *ModbusClient) ReadFloat64(addr uint16, regType RegType) (value float64
 
 // Reads one or multiple 16-bit registers (function code 03 or 04) as bytes.
 // A per-register byteswap is performed if endianness is set to LITTLE_ENDIAN.
-func (mc *ModbusClient) ReadBytes(addr uint16, quantity uint16, regType RegType) (values []byte, err error) {
-	values, err = mc.readBytes(addr, quantity, regType, true)
+func (mc *ModbusClient) ReadBytes(addr uint16, quantity uint16, regType RegType, opts ...OptionFunc) (values []byte, err error) {
+	values, err = mc.readBytes(addr, quantity, regType, true, opts...)
 
 	return
 }
@@ -884,14 +884,14 @@ func (mc *ModbusClient) WriteRawBytes(addr uint16, values []byte) (err error) {
 
 /*** unexported methods ***/
 // Reads one or multiple 16-bit registers (function code 03 or 04) as bytes.
-func (mc *ModbusClient) readBytes(addr uint16, quantity uint16, regType RegType, observeEndianness bool) (values []byte, err error) {
+func (mc *ModbusClient) readBytes(addr uint16, quantity uint16, regType RegType, observeEndianness bool, opts ...OptionFunc) (values []byte, err error) {
 	var regCount uint16
 
 	// read enough registers to get the requested number of bytes
 	// (2 bytes per reg)
 	regCount = (quantity / 2) + (quantity % 2)
 
-	values, err = mc.readRegisters(addr, regCount, regType)
+	values, err = mc.readRegisters(addr, regCount, regType, opts...)
 	if err != nil {
 		return
 	}
